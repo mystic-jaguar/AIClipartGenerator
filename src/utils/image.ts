@@ -1,14 +1,41 @@
 import { Platform } from 'react-native';
 import RNFS from 'react-native-fs';
+import ImageResizer from '@bam.tech/react-native-image-resizer';
 
 const MAX_DIMENSION = 1024;
-const MAX_SIZE_BYTES = 4 * 1024 * 1024; // 4MB
+const JPEG_QUALITY = 82; // Good balance of quality vs size
+
+/**
+ * Compress and resize an image before sending to the API.
+ * Keeps aspect ratio, caps longest side at MAX_DIMENSION.
+ * Returns the URI of the compressed image (written to cache dir).
+ */
+export async function compressImage(uri: string): Promise<string> {
+  const result = await ImageResizer.createResizedImage(
+    uri,
+    MAX_DIMENSION,
+    MAX_DIMENSION,
+    'JPEG',
+    JPEG_QUALITY,
+    0,           // no rotation
+    undefined,   // output path — uses cache dir
+    false,       // no premature scaling
+    { mode: 'contain', onlyScaleDown: true }, // never upscale
+  );
+  return result.uri;
+}
+
+/**
+ * Compress then read as base64.
+ */
+export async function compressAndEncodeBase64(uri: string): Promise<string> {
+  const compressedUri = await compressImage(uri);
+  return imageUriToBase64(compressedUri);
+}
 
 export async function imageUriToBase64(uri: string): Promise<string> {
-  // Strip file:// prefix for RNFS
   const path = uri.startsWith('file://') ? uri.slice(7) : uri;
-  const base64 = await RNFS.readFile(path, 'base64');
-  return base64;
+  return RNFS.readFile(path, 'base64');
 }
 
 export function getImageMimeType(uri: string): string {
@@ -47,10 +74,7 @@ export async function saveImageToDownloads(
   const destPath = `${dir}/${filename}`;
 
   if (imageUrl.startsWith('http')) {
-    await RNFS.downloadFile({
-      fromUrl: imageUrl,
-      toFile: destPath,
-    }).promise;
+    await RNFS.downloadFile({ fromUrl: imageUrl, toFile: destPath }).promise;
   } else {
     const src = imageUrl.startsWith('file://') ? imageUrl.slice(7) : imageUrl;
     await RNFS.copyFile(src, destPath);

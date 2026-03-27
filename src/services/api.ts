@@ -12,10 +12,10 @@ import { StyleType, GeneratedResult } from '../types';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 // Replace with your deployed backend URL (Railway / Render / ngrok for local dev)
-export const API_BASE = 'https://aiclipartbackend-production.up.railway.app';
+export const API_BASE = 'https://count-dallas-objects-entrance.trycloudflare.com';
 
 // Toggle to true for UI dev without a running backend
-const USE_MOCK = __DEV__ && true;
+const USE_MOCK = __DEV__ && false;
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MOCK_IMAGES: Record<StyleType, string> = {
@@ -28,7 +28,7 @@ const MOCK_IMAGES: Record<StyleType, string> = {
 
 const client = axios.create({
   baseURL: API_BASE,
-  timeout: 90_000, // 90s — AI generation can be slow
+  timeout: 90_000,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -72,14 +72,19 @@ export async function generateAllStyles(
   onProgress?: (completed: number, total: number) => void,
 ): Promise<GeneratedResult[]> {
   const total = styles.length;
-  let completed = 0;
+  const results: GeneratedResult[] = [];
 
-  const promises = styles.map(async style => {
+  // Sequential with small delay to respect Replicate's free tier rate limit
+  for (let i = 0; i < styles.length; i++) {
+    const style = styles[i];
     const result = await generateClipart(imageBase64, style.id, style.prompt);
-    completed++;
-    onProgress?.(completed, total);
-    return result;
-  });
+    results.push(result);
+    onProgress?.(i + 1, total);
+    // Small delay between requests to avoid 429s on free tier
+    if (i < styles.length - 1) {
+      await new Promise<void>(resolve => setTimeout(resolve, 1500));
+    }
+  }
 
-  return Promise.all(promises);
+  return results;
 }

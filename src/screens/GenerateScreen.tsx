@@ -7,6 +7,7 @@ import {
   Animated,
   Image,
   ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,10 +24,8 @@ export function GenerateScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { imageUri, selectedStyles } = route.params;
-  const { state, generate } = useGeneration();
+  const { state, generate, retry } = useGeneration();
   const hasStarted = useRef(false);
-
-  // Progress bar animation
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -44,7 +43,6 @@ export function GenerateScreen() {
     }).start();
   }, [state.progress]);
 
-  // Navigate to results when done
   useEffect(() => {
     if (state.status === 'success' && state.results.length > 0) {
       const timer = setTimeout(() => {
@@ -54,12 +52,15 @@ export function GenerateScreen() {
     }
   }, [state.status, state.results]);
 
+  const isError = state.status === 'error';
+  const isProcessing = state.status === 'uploading' || state.status === 'processing';
+
   const statusLabel = {
     idle: 'Preparing...',
-    uploading: 'Processing image...',
+    uploading: 'Compressing image...',
     processing: `Generating ${selectedStyles.length} style${selectedStyles.length !== 1 ? 's' : ''}...`,
     success: 'Done! Loading results...',
-    error: 'Something went wrong',
+    error: 'Generation failed',
   }[state.status];
 
   const selectedStyleInfos = CLIPART_STYLES.filter(s =>
@@ -81,49 +82,84 @@ export function GenerateScreen() {
             accessibilityLabel="Source photo being processed"
           />
           <View style={styles.headerText}>
-            <Text style={styles.title}>Generating</Text>
-            <Text style={styles.statusLabel}>{statusLabel}</Text>
+            <Text style={styles.title}>
+              {isError ? 'Something went wrong' : 'Generating'}
+            </Text>
+            <Text style={[styles.statusLabel, isError && { color: Colors.error }]}>
+              {statusLabel}
+            </Text>
           </View>
         </View>
 
-        {/* Progress bar */}
-        <View style={styles.progressTrack}>
-          <Animated.View
-            style={[
-              styles.progressFill,
-              {
-                width: progressAnim.interpolate({
-                  inputRange: [0, 100],
-                  outputRange: ['0%', '100%'],
-                }),
-              },
-            ]}
-            accessibilityRole="progressbar"
-            accessibilityValue={{ min: 0, max: 100, now: state.progress ?? 0 }}
-          />
-        </View>
-        <Text style={styles.progressText}>
-          {state.progress ?? 0}% complete
-        </Text>
-
-        {/* Style skeleton cards */}
-        <View style={styles.grid}>
-          {selectedStyleInfos.map(style => (
-            <View key={style.id} style={styles.skeletonWrapper}>
-              <View style={[styles.skeletonBadge, { backgroundColor: `${style.accentColor}22` }]}>
-                <View style={[styles.skeletonDot, { backgroundColor: style.accentColor }]} />
-                <Text style={[styles.skeletonLabel, { color: style.accentColor }]}>
-                  {style.label}
-                </Text>
-              </View>
-              <SkeletonCard height={180} />
+        {/* Progress bar — hidden on error */}
+        {!isError && (
+          <>
+            <View style={styles.progressTrack}>
+              <Animated.View
+                style={[
+                  styles.progressFill,
+                  {
+                    width: progressAnim.interpolate({
+                      inputRange: [0, 100],
+                      outputRange: ['0%', '100%'],
+                    }),
+                  },
+                ]}
+                accessibilityRole="progressbar"
+                accessibilityValue={{ min: 0, max: 100, now: state.progress ?? 0 }}
+              />
             </View>
-          ))}
-        </View>
+            <Text style={styles.progressText}>
+              {state.progress ?? 0}% complete
+            </Text>
+          </>
+        )}
 
-        {state.status === 'error' && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{state.error}</Text>
+        {/* Error state */}
+        {isError && (
+          <View style={styles.errorContainer}>
+            <View style={styles.errorBox}>
+              <Text style={styles.errorIcon}>✕</Text>
+              <Text style={styles.errorTitle}>Generation Failed</Text>
+              <Text style={styles.errorMessage}>{state.error}</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.retryBtn}
+              onPress={() => retry(imageUri, selectedStyles)}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Retry generation"
+            >
+              <Text style={styles.retryBtnText}>Try Again</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Go back to style selection"
+            >
+              <Text style={styles.backBtnText}>← Change Styles</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Skeleton cards — shown while processing */}
+        {isProcessing && (
+          <View style={styles.grid}>
+            {selectedStyleInfos.map(style => (
+              <View key={style.id} style={styles.skeletonWrapper}>
+                <View style={[styles.skeletonBadge, { backgroundColor: `${style.accentColor}22` }]}>
+                  <View style={[styles.skeletonDot, { backgroundColor: style.accentColor }]} />
+                  <Text style={[styles.skeletonLabel, { color: style.accentColor }]}>
+                    {style.label}
+                  </Text>
+                </View>
+                <SkeletonCard height={180} />
+              </View>
+            ))}
           </View>
         )}
       </ScrollView>
@@ -150,9 +186,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.cta,
   },
-  headerText: {
-    flex: 1,
-  },
+  headerText: { flex: 1 },
   title: {
     fontSize: 22,
     fontWeight: '800',
@@ -181,9 +215,63 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginBottom: Spacing.xl,
   },
-  grid: {
+  // Error
+  errorContainer: {
     gap: Spacing.md,
   },
+  errorBox: {
+    backgroundColor: `${Colors.error}12`,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: `${Colors.error}35`,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  errorIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: `${Colors.error}20`,
+    textAlign: 'center',
+    lineHeight: 44,
+    fontSize: 18,
+    color: Colors.error,
+    overflow: 'hidden',
+  },
+  errorTitle: {
+    color: Colors.text,
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  errorMessage: {
+    color: Colors.textMuted,
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  retryBtn: {
+    backgroundColor: Colors.cta,
+    borderRadius: Radius.lg,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  retryBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  backBtn: {
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+  },
+  backBtnText: {
+    color: Colors.textMuted,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  // Skeletons
+  grid: { gap: Spacing.md },
   skeletonWrapper: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
@@ -202,26 +290,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.sm,
     alignSelf: 'flex-start',
   },
-  skeletonDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  skeletonLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  errorBox: {
-    backgroundColor: `${Colors.error}18`,
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: `${Colors.error}40`,
-    marginTop: Spacing.md,
-  },
-  errorText: {
-    color: Colors.error,
-    fontSize: 14,
-    textAlign: 'center',
-  },
+  skeletonDot: { width: 8, height: 8, borderRadius: 4 },
+  skeletonLabel: { fontSize: 13, fontWeight: '600' },
 });
