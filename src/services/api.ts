@@ -12,7 +12,7 @@ import { StyleType, GeneratedResult } from '../types';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 // Replace with your deployed backend URL (Railway / Render / ngrok for local dev)
-export const API_BASE = 'https://your-backend-url.railway.app';
+export const API_BASE = 'https://aiclipartbackend-production.up.railway.app';
 
 // Toggle to true for UI dev without a running backend
 const USE_MOCK = __DEV__ && true;
