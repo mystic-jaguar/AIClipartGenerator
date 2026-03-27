@@ -1,65 +1,136 @@
-# AI Clipart Generator
+# AI Clipart Generator — Mobile App
 
-Transform your photos into multi-style clipart using AI. Android app built with React Native.
-
-## Styles Supported
-- Cartoon · Flat Illustration · Anime · Pixel Art · Sketch
-
-## Setup
-
-### Prerequisites
-- Node.js 18+
-- JDK 17
-- Android Studio + Android SDK (API 33+)
-- React Native CLI: `npm install -g @react-native-community/cli`
-
-### Install
-```bash
-npm install
-cd android && ./gradlew clean && cd ..
-```
-
-### Configure AI Backend
-Edit `src/services/api.ts`:
-- Set `USE_MOCK = false`
-- Set `API_BASE` to your backend proxy URL
-
-The backend proxy should accept `POST /api/generate` with `{ imageBase64, styleId, prompt }` and call Replicate/OpenAI, returning `{ imageUrl }`. This keeps API keys off the device.
-
-### Run (Android)
-```bash
-npx react-native run-android
-```
-
-### Build APK
-```bash
-cd android
-./gradlew assembleRelease
-```
-APK output: `android/app/build/outputs/apk/release/app-release.apk`
+React Native Android app for generating AI clipart images via Hugging Face models.
 
 ---
 
-## Tech Decisions
+## Prerequisites
 
-| Decision | Choice | Reason |
-|---|---|---|
-| Framework | React Native | Cross-platform, large ecosystem, TypeScript support |
-| Navigation | React Navigation v7 (native stack) | Native performance, type-safe params |
-| Image picker | react-native-image-picker | Official RN community lib, camera + gallery |
-| File I/O | react-native-fs | Reliable file read/write for base64 + downloads |
-| AI API | Replicate (via backend proxy) | Low cost, many models, no vendor lock-in |
-| State | useState + custom hook | Simple enough — no Redux needed |
+- Node.js 18+
+- JDK 17
+- Android Studio + emulator (or physical device via USB)
+- React Native CLI
 
-## Tradeoffs
+```bash
+npm install -g @react-native-community/cli
+```
 
-- **Mock mode on by default** — set `USE_MOCK=false` and deploy a backend proxy before submitting APK
-- **No caching layer yet** — AsyncStorage caching of previous results is a quick add
-- **Parallel generation** — all styles run simultaneously via `Promise.all`, fastest UX but higher API cost per session
-- **No SVG output** — PNG only; SVG would require a vector-capable model (e.g. Recraft)
+---
 
-## APK Download
-> [Google Drive Link — add after build]
+## Setup
 
-## Screen Recording
-> [Google Drive Link — add after recording]
+```bash
+# Install dependencies
+npm install
+
+# Clean Android build cache (if you hit build errors)
+cd android && ./gradlew clean && cd ..
+```
+
+---
+
+## Running
+
+Open two terminals:
+
+**Terminal 1 — Metro bundler:**
+```bash
+npx react-native start --port 8081
+```
+
+**Terminal 2 — Android:**
+```bash
+npx react-native run-android --port 8081
+```
+
+Make sure an emulator is running or a device is connected via USB before running the second command.
+
+---
+
+## API Configuration
+
+In `src/services/api.ts`, set the backend URL:
+
+```ts
+const API_BASE = 'https://xxxx.trycloudflare.com'; // or your Railway domain
+```
+
+Toggle mock mode for UI testing without a backend:
+
+```ts
+const USE_MOCK = __DEV__ && true;  // mock ON
+const USE_MOCK = __DEV__ && false; // mock OFF (real API)
+```
+
+---
+
+## Build APK
+
+```bash
+cd android
+
+# Debug APK
+./gradlew assembleDebug
+
+# Release APK
+./gradlew assembleRelease
+```
+
+Output paths:
+- Debug: `android/app/build/outputs/apk/debug/app-debug.apk`
+- Release: `android/app/build/outputs/apk/release/app-release.apk`
+
+Install to connected device:
+```bash
+adb install android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+---
+
+## Common Fixes
+
+```bash
+# Reset Metro cache
+npx react-native start --reset-cache
+
+# Reinstall node_modules
+rm -rf node_modules && npm install
+
+# Clean Android build
+cd android && ./gradlew clean && cd ..
+
+# Check TypeScript errors
+npx tsc --noEmit
+```
+
+---
+
+## Design System
+
+```bash
+# Generate design system for a new feature
+python .kiro/steering/ui-ux-pro-max/scripts/search.py "your query" --design-system -p "Project Name"
+
+# Search UX guidelines
+python .kiro/steering/ui-ux-pro-max/scripts/search.py "loading animation" --domain ux
+
+# Get React Native stack guidelines
+python .kiro/steering/ui-ux-pro-max/scripts/search.py "navigation" --stack react-native
+```
+
+---
+
+## Quick Start (Full Stack)
+
+Open 3 terminals:
+
+```bash
+# Terminal 1 — Backend
+cd ../backend && npm run dev
+
+# Terminal 2 — Tunnel
+cd ../backend && npx cloudflared tunnel --url http://localhost:3000
+
+# Terminal 3 — App
+npx react-native run-android --port 8081
+```
