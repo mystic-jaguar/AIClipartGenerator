@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  Alert,
   SafeAreaView,
   ScrollView,
   ActivityIndicator,
@@ -20,6 +19,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { Colors, Spacing, Radius } from '../constants/theme';
+import { AppModal } from '../components/AppModal';
+import { useModal } from '../hooks/useModal';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Upload'>;
 
@@ -30,7 +31,7 @@ export function UploadScreen() {
   const navigation = useNavigation<Nav>();
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageInfo, setImageInfo] = useState<{ width: number; height: number; size: number } | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { modal, hideModal, showError } = useModal();
 
   const handlePickerResponse = (response: ImagePickerResponse) => {
     if (response.didCancel || response.errorCode) return;
@@ -40,13 +41,13 @@ export function UploadScreen() {
 
     // Validate type
     if (asset.type && !VALID_TYPES.includes(asset.type)) {
-      Alert.alert('Invalid Format', 'Please select a JPEG, PNG, or WebP image.');
+      showError('Invalid Format', 'Please select a JPEG, PNG, or WebP image.');
       return;
     }
 
     // Validate size
     if (asset.fileSize && asset.fileSize > MAX_SIZE) {
-      Alert.alert('Image Too Large', 'Please select an image under 10MB.');
+      showError('Image Too Large', 'Please select an image under 10MB.');
       return;
     }
 
@@ -163,21 +164,26 @@ export function UploadScreen() {
         <TouchableOpacity
           style={[styles.continueBtn, !imageUri && styles.continueBtnDisabled]}
           onPress={handleContinue}
-          disabled={!imageUri || loading}
+          disabled={!imageUri}
           activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel="Continue to style selection"
           accessibilityState={{ disabled: !imageUri }}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.continueBtnText}>
-              {imageUri ? 'Continue →' : 'Select a photo first'}
-            </Text>
-          )}
+          <Text style={styles.continueBtnText}>
+            {imageUri ? 'Continue →' : 'Select a photo first'}
+          </Text>
         </TouchableOpacity>
       </View>
+
+      <AppModal
+        visible={modal.visible}
+        type={modal.type}
+        title={modal.title}
+        message={modal.message}
+        buttons={modal.buttons}
+        onDismiss={hideModal}
+      />
     </SafeAreaView>
   );
 }

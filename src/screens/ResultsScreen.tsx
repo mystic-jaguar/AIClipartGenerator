@@ -6,7 +6,6 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -15,6 +14,8 @@ import { RootStackParamList } from '../types';
 import { ResultCard } from '../components/ResultCard';
 import { Colors, Spacing, Radius } from '../constants/theme';
 import { saveImageToDownloads } from '../utils/image';
+import { AppModal } from '../components/AppModal';
+import { useModal } from '../hooks/useModal';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Results'>;
 type Route = RouteProp<RootStackParamList, 'Results'>;
@@ -24,6 +25,7 @@ export function ResultsScreen() {
   const route = useRoute<Route>();
   const { results } = route.params;
   const [downloadingAll, setDownloadingAll] = useState(false);
+  const { modal, hideModal, showSuccess, showError } = useModal();
 
   const handleDownloadAll = async () => {
     setDownloadingAll(true);
@@ -36,9 +38,9 @@ export function ResultsScreen() {
           ),
         ),
       );
-      Alert.alert('All Saved', `${results.length} images saved to Downloads.`);
+      showSuccess('All Saved', `${results.length} images saved to Downloads.`);
     } catch {
-      Alert.alert('Error', 'Some images failed to save. Please try individually.');
+      showError('Error', 'Some images failed to save. Please try individually.');
     } finally {
       setDownloadingAll(false);
     }
@@ -93,6 +95,15 @@ export function ResultsScreen() {
           <Text style={styles.startOverText}>+ New Photo</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <AppModal
+        visible={modal.visible}
+        type={modal.type}
+        title={modal.title}
+        message={modal.message}
+        buttons={modal.buttons}
+        onDismiss={hideModal}
+      />
     </SafeAreaView>
   );
 }

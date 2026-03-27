@@ -5,7 +5,6 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   Share,
 } from 'react-native';
@@ -13,6 +12,8 @@ import { GeneratedResult } from '../types';
 import { CLIPART_STYLES } from '../constants/styles';
 import { Colors, Radius, Spacing } from '../constants/theme';
 import { saveImageToDownloads } from '../utils/image';
+import { AppModal } from './AppModal';
+import { useModal } from '../hooks/useModal';
 
 interface Props {
   result: GeneratedResult;
@@ -21,6 +22,7 @@ interface Props {
 export function ResultCard({ result }: Props) {
   const [downloading, setDownloading] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const { modal, hideModal, showSuccess, showError } = useModal();
   const styleInfo = CLIPART_STYLES.find(s => s.id === result.styleId);
 
   const handleDownload = async () => {
@@ -28,9 +30,9 @@ export function ResultCard({ result }: Props) {
     try {
       const filename = `clipart_${result.styleId}_${result.timestamp}.png`;
       await saveImageToDownloads(result.imageUrl, filename);
-      Alert.alert('Saved', `Image saved to Downloads as ${filename}`);
+      showSuccess('Saved', `${styleInfo?.label} clipart saved to Downloads.`);
     } catch {
-      Alert.alert('Error', 'Failed to save image. Please try again.');
+      showError('Download Failed', 'Could not save image. Please try again.');
     } finally {
       setDownloading(false);
     }
@@ -48,7 +50,8 @@ export function ResultCard({ result }: Props) {
   };
 
   return (
-    <View style={styles.card}>
+    <>
+      <View style={styles.card}>
       <View style={[styles.badge, { backgroundColor: `${styleInfo?.accentColor}22` }]}>
         <View style={[styles.badgeDot, { backgroundColor: styleInfo?.accentColor }]} />
         <Text style={[styles.badgeText, { color: styleInfo?.accentColor }]}>
@@ -97,6 +100,16 @@ export function ResultCard({ result }: Props) {
         </TouchableOpacity>
       </View>
     </View>
+
+      <AppModal
+        visible={modal.visible}
+        type={modal.type}
+        title={modal.title}
+        message={modal.message}
+        buttons={modal.buttons}
+        onDismiss={hideModal}
+      />
+    </>
   );
 }
 
