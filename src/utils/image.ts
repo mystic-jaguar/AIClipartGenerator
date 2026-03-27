@@ -73,7 +73,11 @@ export async function saveImageToDownloads(
   const dir = await getDownloadDir();
   const destPath = `${dir}/${filename}`;
 
-  if (imageUrl.startsWith('http')) {
+  if (imageUrl.startsWith('data:')) {
+    // base64 data URI — extract and write directly
+    const base64Data = imageUrl.split(',')[1];
+    await RNFS.writeFile(destPath, base64Data, 'base64');
+  } else if (imageUrl.startsWith('http')) {
     await RNFS.downloadFile({ fromUrl: imageUrl, toFile: destPath }).promise;
   } else {
     const src = imageUrl.startsWith('file://') ? imageUrl.slice(7) : imageUrl;
