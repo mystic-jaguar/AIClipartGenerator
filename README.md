@@ -52,7 +52,7 @@ Make sure an emulator is running or a device is connected via USB before running
 In `src/services/api.ts`, set the backend URL:
 
 ```ts
-const API_BASE = 'https://xxxx.trycloudflare.com'; // or your Railway domain
+const API_BASE = 'https://aiclipart-backend.onrender.com';
 ```
 
 Toggle mock mode for UI testing without a backend:
