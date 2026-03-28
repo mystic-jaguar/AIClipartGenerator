@@ -134,3 +134,5 @@ cd ../backend && npx cloudflared tunnel --url http://localhost:3000
 # Terminal 3 — App
 npx react-native run-android --port 8081
 ```
+
+For production, deploy the backend to [Render](https://render.com) and set `API_BASE` to your Render domain.

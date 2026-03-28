@@ -12,7 +12,7 @@ import { StyleType, GeneratedResult } from '../types';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 // Replace with your deployed backend URL (Railway / Render / ngrok for local dev)
-export const API_BASE = 'https://count-dallas-objects-entrance.trycloudflare.com';
+export const API_BASE = 'https://aiclipart-backend.onrender.com';
 
 // Toggle to true for UI dev without a running backend
 const USE_MOCK = __DEV__ && false;
